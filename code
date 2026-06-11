@@ -2,10 +2,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// Macro constant to avoid magic numbers
+// Macro constant to avoid magic numbers in the code
 #define BUFFER_SIZE 8
 
-// Encapsulated structure for the Ring Buffer
+// Structure to group our buffer variables together neatly
 typedef struct {
     uint8_t storage[BUFFER_SIZE];
     uint16_t head;
@@ -13,14 +13,14 @@ typedef struct {
     uint16_t count;
 } ring_buffer_t;
 
-// Clear and simple initialization
+// Function to initialize the buffer variables to 0
 void init_buffer(ring_buffer_t *buf) {
     buf->head = 0;
     buf->tail = 0;
     buf->count = 0;
 }
 
-// Check if buffer is full using straightforward conditions
+// Check if buffer is full using a simple if-else style
 bool is_full(ring_buffer_t *buf) {
     if (buf->count == BUFFER_SIZE) {
         return true;
@@ -36,20 +36,19 @@ bool is_empty(ring_buffer_t *buf) {
     return false;
 }
 
-// Simple wrapper function to query current count safely
+// Simple helper function to get current element count
 uint16_t get_count(ring_buffer_t *buf) {
     return buf->count;
 }
 
-// Function to write a byte into the buffer
+// Function to write a byte into the buffer (Data In)
 bool write_buffer(ring_buffer_t *buf, uint8_t data) {
-    // Fail immediately if no space is available
-    if (is_full(buf)) {
+    // If buffer is full, reject the write operation immediately
+    if (is_full(buf) == true) {
         return false;
     }
 
-    // Assign data to the current head index
-    storage_index_assignment:
+    // Insert data at the current head position
     buf->storage[buf->head] = data;
     
     /* 
@@ -71,17 +70,17 @@ bool write_buffer(ring_buffer_t *buf, uint8_t data) {
     return true;
 }
 
-// Function to read a byte from the buffer
+// Function to read a byte from the buffer (Data Out)
 bool read_buffer(ring_buffer_t *buf, uint8_t *data) {
-    // Fail immediately if there is nothing to read
-    if (is_empty(buf)) {
+    // If buffer is empty, reject the read operation immediately
+    if (is_empty(buf) == true) {
         return false;
     }
 
-    // Extract data from the current tail index
+    // Extract data from the current tail position
     *data = buf->storage[buf->tail];
     
-    // Wrap tail index efficiently using bitwise logic
+    // Move tail index forward and wrap around using bitwise logic
     buf->tail = (buf->tail + 1) & (BUFFER_SIZE - 1);
     buf->count--;
     
@@ -91,10 +90,11 @@ bool read_buffer(ring_buffer_t *buf, uint8_t *data) {
 int main(void) {
     ring_buffer_t my_buf;
     init_buffer(&my_buf);
+    
     uint8_t temp = 0;
-    int i; // Declared explicitly outside loops for clean C99/C11 compilation style
+    int i; // Declared here for pure, clean C99 compilation compliance
 
-    // 1. Write initial 8 bytes one by one
+    // 1. Automatic Write: Write initial 8 bytes one by one
     uint8_t bytes[] = {0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48};
     for (i = 0; i < 8; i++) {
         if (write_buffer(&my_buf, bytes[i]) == true) {
@@ -106,19 +106,19 @@ int main(void) {
         }
     }
 
-    // 2. Try writing 0x99 to a full buffer (Must fail)
+    // 2. Automatic Write: Try writing 0x99 to a full buffer (Must fail)
     if (write_buffer(&my_buf, 0x99) == false) {
         printf("[WRITE] 0x99 -> FAIL (buffer full)\n");
     }
 
-    // 3. Read 3 bytes one by one
+    // 3. Automatic Read: Read 3 bytes one by one
     for (i = 0; i < 3; i++) {
         if (read_buffer(&my_buf, &temp) == true) {
             printf("[READ] -> 0x%02X (count=%d)\n", temp, get_count(&my_buf));
         }
     }
 
-    // 4. Write 3 new bytes (0x49, 0x4A, 0x4B) into freed spots
+    // 4. Automatic Write: Write 3 new bytes into the empty spaces
     uint8_t new_bytes[] = {0x49, 0x4A, 0x4B};
     for (i = 0; i < 3; i++) {
         if (write_buffer(&my_buf, new_bytes[i]) == true) {
@@ -130,14 +130,14 @@ int main(void) {
         }
     }
 
-    // 5. Read all remaining bytes from the buffer until empty
+    // 5. Automatic Read: Clear the rest of the buffer automatically
     while (is_empty(&my_buf) == false) {
         if (read_buffer(&my_buf, &temp) == true) {
             printf("[READ] -> 0x%02X (count=%d)\n", temp, get_count(&my_buf));
         }
     }
 
-    // 6. Try reading from an empty buffer (Must fail)
+    // 6. Automatic Read: Try reading from the empty buffer (Must fail)
     if (read_buffer(&my_buf, &temp) == false) {
         printf("[READ] (empty) -> FAIL (buffer empty)\n");
     }
